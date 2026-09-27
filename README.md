@@ -31,9 +31,12 @@ and skips instead of failing silently:
 
 Interactive, re-runnable: checks state first, skips what's already applied,
 asks before each change and prints its undo command. Disables
-NetworkManager-wait-online (~6s off boot) and switches Docker to socket
+NetworkManager-wait-online (~6s off boot), switches Docker to socket
 activation (docker/containerd start on first use; containers with a restart
-policy then start on first docker use, not at boot). Reports microcode and
+policy then start on first docker use, not at boot), disables the unused
+openvpn/strongswan daemons (Tailscale is the VPN), and stops mintwelcome,
+mintreport and Warpinator autostarting at login (per-user `Hidden=true`
+overrides in `~/.config/autostart`). Reports microcode and
 the projects-drive filesystem.
 
 ```
