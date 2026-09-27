@@ -79,9 +79,46 @@ else
   echo "  already off"
 fi
 
+echo ""; echo "[4] Printing (CUPS):"
+if systemctl is-enabled -q cups.service 2>/dev/null; then
+  if [ -z "$(lpstat -v 2>/dev/null)" ]; then
+    echo "  No printers configured, but cupsd runs all the time."
+    if confirm "  Disable CUPS?"; then
+      sudo systemctl disable --now cups.service cups.socket cups.path
+      echo "  undo: sudo systemctl enable --now cups.service cups.socket cups.path"
+    fi
+  else
+    echo "  printers configured — keeping"
+  fi
+else
+  echo "  already disabled"
+fi
+
+echo ""; echo "[5] ZFS tools (module still loads at boot):"
+if dpkg -s zfsutils-linux >/dev/null 2>&1; then
+  if zpool list -H 2>/dev/null | grep -q .; then
+    echo "  ZFS pools exist — keeping"
+  elif confirm "  No ZFS pools. Purge zfsutils-linux, zfs-zed, zfs-initramfs?"; then
+    sudo apt-get purge -y zfsutils-linux zfs-zed zfs-initramfs
+    echo "  undo: sudo apt-get install zfsutils-linux zfs-zed zfs-initramfs"
+  fi
+else
+  echo "  not installed"
+fi
+
+echo ""; echo "[6] plocate daily index (only used by the 'locate' command):"
+if systemctl is-enabled -q plocate-updatedb.timer 2>/dev/null; then
+  if confirm "  Don't use 'locate'? Disable the daily disk scan?"; then
+    sudo systemctl disable --now plocate-updatedb.timer
+    echo "  undo: sudo systemctl enable --now plocate-updatedb.timer"
+  fi
+else
+  echo "  already disabled"
+fi
+
 # ───── Checks (report only) ─────
 
-echo ""; echo "[4] CPU microcode:"
+echo ""; echo "[7] CPU microcode:"
 if dpkg -s intel-microcode >/dev/null 2>&1; then
   echo "  intel-microcode $(dpkg-query -W -f='${Version}' intel-microcode) installed"
   apt list --upgradable 2>/dev/null | grep -q '^intel-microcode/' \
@@ -92,7 +129,7 @@ fi
 echo "  GDS: $(cat /sys/devices/system/cpu/vulnerabilities/gather_data_sampling)"
 echo "  (\"No microcode\" with the package current = Intel ships no fix for this CPU.)"
 
-echo ""; echo "[5] Projects drive filesystem:"
+echo ""; echo "[8] Projects drive filesystem:"
 FS=$(findmnt -no FSTYPE /media/lion/Data 2>/dev/null)
 case "$FS" in
   ext4|btrfs|xfs) echo "  $FS — fine" ;;
