@@ -22,7 +22,7 @@ fi
 
 confirm() {  # confirm "question" -> 0 if user typed y
   local a
-  if ! read -r -p "$1 [y/N] " a < /dev/tty 2>/dev/null; then
+  if ! read -r -p "$1 [y/N] " a 2>/dev/null < /dev/tty; then
     echo "  (no terminal — SKIPPED, run from a real terminal to be asked)"
     return 1
   fi
