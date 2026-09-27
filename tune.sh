@@ -59,23 +59,7 @@ else
   echo "  already socket-activated (docker.service not enabled)"
 fi
 
-echo ""; echo "[3] Unused VPN daemons (Tailscale is the VPN in use):"
-VPN_ON=$(for u in openvpn.service strongswan-starter.service; do
-  systemctl is-enabled -q "$u" 2>/dev/null && echo "$u"
-done)
-if [ -n "$VPN_ON" ]; then
-  echo "  Enabled:"; echo "$VPN_ON" | sed 's/^/    /'
-  CONFS=$(ls /etc/openvpn/*.conf /etc/openvpn/client/*.conf /etc/ipsec.d/*.conf 2>/dev/null)
-  [ -n "$CONFS" ] && { echo "  NOTE: VPN configs exist — keep these if you use them:"; echo "$CONFS" | sed 's/^/    /'; }
-  if confirm "  Disable and stop them?"; then
-    sudo systemctl disable --now $VPN_ON
-    echo "  undo: sudo systemctl enable --now $(echo $VPN_ON)"
-  fi
-else
-  echo "  already disabled"
-fi
-
-echo ""; echo "[4] Login autostart (Mint welcome/report tools, Warpinator):"
+echo ""; echo "[3] Login autostart (Mint welcome/report tools, Warpinator):"
 AS_ON=""
 for n in mintwelcome mintreport warpinator-autostart; do
   [ -f "/etc/xdg/autostart/$n.desktop" ] || continue
@@ -97,7 +81,7 @@ fi
 
 # ───── Checks (report only) ─────
 
-echo ""; echo "[5] CPU microcode:"
+echo ""; echo "[4] CPU microcode:"
 if dpkg -s intel-microcode >/dev/null 2>&1; then
   echo "  intel-microcode $(dpkg-query -W -f='${Version}' intel-microcode) installed"
   apt list --upgradable 2>/dev/null | grep -q '^intel-microcode/' \
@@ -108,7 +92,7 @@ fi
 echo "  GDS: $(cat /sys/devices/system/cpu/vulnerabilities/gather_data_sampling)"
 echo "  (\"No microcode\" with the package current = Intel ships no fix for this CPU.)"
 
-echo ""; echo "[6] Projects drive filesystem:"
+echo ""; echo "[5] Projects drive filesystem:"
 FS=$(findmnt -no FSTYPE /media/lion/Data 2>/dev/null)
 case "$FS" in
   ext4|btrfs|xfs) echo "  $FS — fine" ;;

@@ -33,14 +33,24 @@ Interactive, re-runnable: checks state first, skips what's already applied,
 asks before each change and prints its undo command. Disables
 NetworkManager-wait-online (~6s off boot), switches Docker to socket
 activation (docker/containerd start on first use; containers with a restart
-policy then start on first docker use, not at boot), disables the unused
-openvpn/strongswan daemons (Tailscale is the VPN), and stops mintwelcome,
+policy then start on first docker use, not at boot), and stops mintwelcome,
 mintreport and Warpinator autostarting at login (per-user `Hidden=true`
 overrides in `~/.config/autostart`). Reports microcode and
 the projects-drive filesystem.
 
 ```
 ./tune.sh
+```
+
+### `remove-vpn.sh` — remove all VPN software
+
+No VPN is used on this machine. Purges Tailscale, OpenVPN, strongSwan/IPsec,
+PPTP, L2TP and the NetworkManager VPN plugins, removes the Tailscale repo and
+nm-l2tp PPA, uninstalls the ProtonVPN flatpak with its data, and deletes any
+VPN/WireGuard NetworkManager connections. Asks per section; re-runnable.
+
+```
+./remove-vpn.sh
 ```
 
 ## Legacy (May 2026 audit, one-shot — already applied on this machine)
