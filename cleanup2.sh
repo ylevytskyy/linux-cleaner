@@ -62,6 +62,19 @@ flatpak uninstall --unused --noninteractive -y 2>&1 | tail -3 || true
 # ───── System-side (sudo) ─────
 
 echo ""; echo "[5] apt autoremove + clean, rc-configs, journal 14d, crash dumps..."
+# Old kernel packages (image/modules/headers/tools) installed via Update
+# Manager are marked manual, so autoremove never drops them. Unmark all but the
+# running kernel's; apt itself still protects the running + newest kernels.
+ABI=$(uname -r | sed 's/-generic$//')
+OLDK=$(apt-mark showmanual | grep -E '^linux-(image|modules|modules-extra|headers|tools)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]+(-generic)?$' \
+  | grep -vE -- "-${ABI}(-generic)?$")
+if [ -n "$OLDK" ]; then
+  echo "  $(echo "$OLDK" | wc -l) old kernel packages held as manual (running: $ABI), e.g.:"
+  echo "$OLDK" | head -5 | sed 's/^/    /'
+  if confirm "  Let autoremove clean them up (shown below before purging)?"; then
+    echo "$OLDK" | xargs sudo apt-mark auto >/dev/null
+  fi
+fi
 AUTO=$(apt-get -s autoremove 2>/dev/null | awk '/^Remv/{print $2}')
 if [ -n "$AUTO" ]; then
   echo "  autoremove would purge:"; echo "$AUTO" | sed 's/^/    /'
@@ -128,11 +141,5 @@ du -sh \
   ~/.config/skypeforlinux \
   2>/dev/null | sort -rh
 echo "  (Skype is discontinued — its config dir is dead data.)"
-RUNNING_K="linux-image-$(uname -r)"
-for k in $(apt-mark showmanual | grep -E '^linux-image-[0-9]'); do
-  [ "$k" = "$RUNNING_K" ] && continue
-  echo "  Old kernel held as manual (autoremove skips it): $k"
-  echo "    to drop: sudo apt-mark auto $k && sudo apt-get autoremove --purge"
-done
 
 echo ""; echo ">>> Done. Free: /: $(free_on /)   Data: $(free_on /media/lion/Data)"
