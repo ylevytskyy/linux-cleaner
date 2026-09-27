@@ -15,6 +15,11 @@
 
 set -u
 
+if [ "$(id -u)" -eq 0 ]; then  # under sudo, ~ would point at /root
+  echo "!!! Run as your normal user, not root/sudo (the script sudo's itself)."
+  exit 1
+fi
+
 confirm() {  # confirm "question" -> 0 if user typed y
   local a
   if ! read -r -p "$1 [y/N] " a < /dev/tty 2>/dev/null; then
@@ -44,7 +49,12 @@ pnpm store prune 2>&1 | tail -2 || true
 
 echo ""; echo "[3] flatpak app caches (~/.var/app/*/cache)..."
 du -shc ~/.var/app/*/cache 2>/dev/null | tail -1
-rm -rf ~/.var/app/*/cache/* 2>/dev/null
+RUNNING=$(flatpak ps --columns=application 2>/dev/null)
+for d in ~/.var/app/*/cache; do
+  app=$(basename "$(dirname "$d")")
+  if grep -qx "$app" <<< "$RUNNING"; then echo "  skip $app (running)"; continue; fi
+  rm -rf "${d:?}"/* 2>/dev/null
+done
 
 echo ""; echo "[4] unused flatpak runtimes..."
 flatpak uninstall --unused --noninteractive -y 2>&1 | tail -3 || true
@@ -52,12 +62,19 @@ flatpak uninstall --unused --noninteractive -y 2>&1 | tail -3 || true
 # ───── System-side (sudo) ─────
 
 echo ""; echo "[5] apt autoremove + clean, rc-configs, journal 14d, crash dumps..."
-sudo apt autoremove --purge -y 2>&1 | tail -2
-sudo apt clean
+AUTO=$(apt-get -s autoremove 2>/dev/null | awk '/^Remv/{print $2}')
+if [ -n "$AUTO" ]; then
+  echo "  autoremove would purge:"; echo "$AUTO" | sed 's/^/    /'
+  if confirm "  Purge these packages?"; then sudo apt-get autoremove --purge -y; fi
+fi
+sudo apt-get clean
 RC=$(dpkg -l 2>/dev/null | awk '/^rc/{print $2}')
-[ -n "$RC" ] && echo "$RC" | xargs sudo apt purge -y 2>&1 | tail -2
+if [ -n "$RC" ]; then
+  echo "  leftover configs of removed packages:"; echo "$RC" | sed 's/^/    /'
+  if confirm "  Purge these configs?"; then echo "$RC" | xargs sudo apt-get purge -y 2>&1 | tail -2; fi
+fi
 sudo journalctl --vacuum-time=14d 2>&1 | tail -1
-sudo rm -rf /var/lib/systemd/coredump/* /var/crash/*
+sudo find /var/lib/systemd/coredump /var/crash -mindepth 1 -delete 2>/dev/null
 
 # ───── Ask first (costly to rebuild) ─────
 
@@ -74,6 +91,7 @@ fi
 echo ""; echo "[7] Gradle caches (next Android build re-downloads deps):"
 du -sh ~/.gradle 2>/dev/null
 if confirm "  Clear ~/.gradle caches?"; then
+  pkill -f GradleDaemon 2>/dev/null  # running daemons break if caches vanish
   rm -rf ~/.gradle/caches ~/.gradle/daemon ~/.gradle/build-cache
 fi
 
@@ -110,5 +128,11 @@ du -sh \
   ~/.config/skypeforlinux \
   2>/dev/null | sort -rh
 echo "  (Skype is discontinued — its config dir is dead data.)"
+RUNNING_K="linux-image-$(uname -r)"
+for k in $(apt-mark showmanual | grep -E '^linux-image-[0-9]'); do
+  [ "$k" = "$RUNNING_K" ] && continue
+  echo "  Old kernel held as manual (autoremove skips it): $k"
+  echo "    to drop: sudo apt-mark auto $k && sudo apt-get autoremove --purge"
+done
 
 echo ""; echo ">>> Done. Free: /: $(free_on /)   Data: $(free_on /media/lion/Data)"
