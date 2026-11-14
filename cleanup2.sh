@@ -120,7 +120,9 @@ if [ -s "$NVM_DIR/nvm.sh" ]; then
   . "$NVM_DIR/nvm.sh"
   KEEP=$(nvm version default)
   echo "  keeping default: $KEEP"
-  for v in $(ls "$NVM_DIR/versions/node" 2>/dev/null); do
+  for d in "$NVM_DIR"/versions/node/*/; do
+    [ -d "$d" ] || continue
+    v=$(basename "$d")
     [ "$v" = "$KEEP" ] && continue
     if confirm "  Remove node $v?"; then nvm uninstall "$v"; fi
   done

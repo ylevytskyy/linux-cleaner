@@ -71,6 +71,7 @@ fi
 
 # ───── 4. ~/.lldb (debugger artifacts) ─────
 if [ -d ~/.lldb ]; then
+  # shellcheck disable=SC2088 # display label, not a path
   section "~/.lldb (debugger cache)"
   show_size ~/.lldb
   echo "Top entries:"
@@ -161,6 +162,7 @@ fi
 
 # ───── 11. ~/Downloads — list old, don't delete ─────
 if [ -d ~/Downloads ]; then
+  # shellcheck disable=SC2088 # display label, not a path
   section "~/Downloads — files older than 180 days"
   count=$(find ~/Downloads -type f -mtime +180 2>/dev/null | wc -l)
   size=$(find ~/Downloads -type f -mtime +180 -printf '%s\n' 2>/dev/null \
